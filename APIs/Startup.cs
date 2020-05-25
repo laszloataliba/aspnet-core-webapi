@@ -41,6 +41,7 @@ namespace APIs
                 app.UseDeveloperExceptionPage();
             }
 
+            app.UseStatusCodePages();
             app.UseMvc();
         }
     }
