@@ -1,7 +1,9 @@
 ﻿using APIs.DataBase;
+using APIs.Helpers;
 using APIs.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,9 +23,35 @@ namespace APIs.Controllers
 
         [Route(""),
          HttpGet]
-        public IActionResult Get()
+        public IActionResult Get([FromQuery] PalavraUrlQuery pQuery)
         {
-            return Ok(_banco.Palavras);
+            var item = _banco.Palavras.AsQueryable();
+
+            if (pQuery.Data.HasValue)
+            {
+                item = item.Where(x => x.Criado >= pQuery.Data.Value || x.Atualizado > pQuery.Data.Value);
+            }
+
+            if (pQuery.PagNumero.HasValue)
+            {
+                var quantidadeTotalRegistros = item.Count();
+                item = item.Skip((pQuery.PagNumero.Value - 1) * pQuery.PagRegistro.Value).Take(pQuery.PagRegistro.Value);
+
+                var paginacao = new Paginacao();
+                paginacao.NumeroPagina = pQuery.PagNumero.Value;
+                paginacao.RegistroPorPagina = pQuery.PagRegistro.Value;
+                paginacao.TotalRegistros = quantidadeTotalRegistros;
+                paginacao.TotalPaginas = (int)Math.Ceiling((double)quantidadeTotalRegistros / pQuery.PagRegistro.Value);
+
+                Response.Headers.Add("X-Pagination", JsonConvert.SerializeObject(paginacao));
+
+                if (pQuery.PagNumero > paginacao.TotalPaginas)
+                {
+                    return NotFound();
+                }
+            }
+
+            return Ok(item);
         }
 
         [Route("{id}"),
